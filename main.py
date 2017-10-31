@@ -1,59 +1,79 @@
+#
+# Imports
+#
 import numpy as np
 
-# sigmoid
-def sigmoid(x, deriv=False):
-    if(deriv == True):
-        return x * (1 - x)
-    return 1 / (1 + np.exp(-x))
+class BackPropogationNetwork:
+    ''' A back-propagation network '''
 
-# input dataset
-X = np.array([[0, 0, 1],
-              [0, 1, 1],
-              [1, 0, 1],
-              [1, 1, 1]])
+    #
+    # Class members
+    #
+    layerCount = 0
+    shape = None
+    weights = []
 
-# output dataset
-y = np.array([[0, 0, 1, 1]]).T
+    #
+    # Class methods
+    #
+    def __init__ (self, layerSize):
+        ''' Initialize the network '''
 
-'''
-3 input - 1 output NN:
+        # Layer info
+        self.layerCount = len(layerSize) - 1
+        self.shape = layerSize
 
-0
-| \
-0 - >  0
-| /
-0
-'''
+        # Input/Output data from last run
+        self._layerInput = []
+        self._layerOutput = []
 
-# seed random numbers to make calculation
-# deterministic (just a good practice)
-np.random.seed(1)
+        # Create the weight arrays
+        for (l1, l2) in zip(layerSize[:-1], layerSize[1:]):
+            # Bias node means +1 to leading layer
+            self.weights.append(np.random.normal(scale=0.1, size = (l2, l1+1)))
 
-# initialize weights randomly with mean 0
-syn0 = 2 * np.random.random((3, 1)) - 1
+    #
+    # Run method
+    #
+    def Run(self, input):
+        ''' Run the network based on the input data '''
 
-print("y: \n", y)
-print("syn0: \n", syn0)
+        lnCases = input.shape[0]
 
-for x in range(100000):
+        # Clear out the previous intermediate value lists
+        self._layerInput = []
+        self._layerOutput = []
 
-    # forward propagation
-    l0 = X
-    l1 = sigmoid(np.dot(l0, syn0))
+        # Run it!
+        for index in range(self.layerCount):
+            if index == 0:
+                layerInput = self.weights[0].dot(np.vstack([input.T, np.ones([1, lnCases])]))
 
-    # how much did we miss?
-    l1_error = y - l1
+            else:
+                layerInput = self.weights[index].dot(np.vstack([self._layerOutput[-1], np.ones([1, lnCases])]))
 
-    # multiply how much we missed by the
-    # slope of the sigmoid at the values in l1
-    l1_delta = l1_error * sigmoid(l1, True)
+            self._layerInput.append(layerInput)
+            self._layerOutput.append(self.sigmoid(layerInput))
 
-    # update weights
-    syn0 += np.dot(l0.T, l1_delta)
-    # print("l1: \n", l1)
-    # print("err: \n", l1)
-    # print("delta: \n", l1_delta)
-    # print("syn0: \n", syn0)
+        return self._layerOutput[-1].T
 
-print ("Output After Training:")
-print (l1)
+    # Transfer functions
+    def sigmoid(self, x, Deriv=False):
+        if not Deriv:
+            return 1/ (1 + np.exp(-x))
+        else:
+            out = self.sigmoid(x)
+            return out*(1 - out)
+
+#
+# If run as a script, create a test object
+#
+if __name__ == "__main__":
+    nn = BackPropogationNetwork((2, 2, 2))
+    print(nn.shape)
+    print(nn.weights)
+
+    lvInput = np.array([[0,0], [1,1], [-1, 0.5]])
+    lvOutput = nn.Run(lvInput)
+
+    print("Input:  {0}\nOutput: {1}".format(lvInput, lvOutput))
